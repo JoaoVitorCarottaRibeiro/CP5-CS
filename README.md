@@ -105,11 +105,31 @@ Pacotes principais (projeto `ExpenseHub.Api`):
 - `Microsoft.EntityFrameworkCore.Sqlite`
 - `Microsoft.EntityFrameworkCore.Design`
 - `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- `Microsoft.AspNetCore.Authentication.JwtBearer`
+- `System.IdentityModel.Tokens.Jwt`
+
+### Segredos (fora do repositório)
+
+A chave de assinatura do JWT e a senha inicial do Admin **não são versionadas**.
+Em desenvolvimento, use os User Secrets do projeto:
+
+```shell
+cd sources/ExpenseHub.Api
+dotnet user-secrets set "Jwt:Key" "<uma-chave-longa-e-aleatoria-com-32-ou-mais-caracteres>"
+dotnet user-secrets set "Seed:AdminPassword" "<senha-forte-do-admin>"
+```
+
+Em integração contínua, os mesmos valores podem ser fornecidos por variáveis de
+ambiente (`Jwt__Key` e `Seed__AdminPassword`). A senha do Admin deve atender à
+política do Identity: mínimo de seis caracteres, com maiúscula, minúscula, dígito
+e símbolo. O e-mail do Admin pode ser ajustado em `appsettings.json`
+(`Seed:AdminEmail`); o padrão é `admin@expensehub.local`.
 
 ### Banco de dados
 
 O banco (`expensehub.db`) é criado automaticamente na primeira execução: a
-aplicação aplica as migrations no startup. O arquivo `.db` é ignorado pelo Git.
+aplicação aplica as migrations no startup e executa o seed idempotente (as cinco
+roles e a única conta Admin). O arquivo `.db` é ignorado pelo Git.
 
 Para criar ou atualizar o banco manualmente, se preferir:
 
@@ -127,6 +147,13 @@ dotnet build ./sources/ExpenseHub.slnx
 dotnet run --project ./sources/ExpenseHub.Api/ExpenseHub.Api.csproj
 ```
 
-Endpoint disponível nesta etapa: `GET /health`, apenas para confirmar que a
-aplicação inicia e persiste o schema. Autenticação, usuários e reembolsos chegam
-nas próximas issues.
+Endpoints disponíveis nesta etapa:
+
+- `GET /health` — confirma que a aplicação inicia.
+- `POST /login` — autentica com e-mail e senha e devolve um token bearer (JWT).
+- `GET /me` — rota protegida; devolve o usuário autenticado e suas roles. Sem token
+  retorna `401`.
+
+O cadastro de usuários e o gerenciamento de roles chegam no I03; os reembolsos,
+nas issues seguintes. Para autenticar, use a conta Admin criada pelo seed
+(e-mail de `Seed:AdminEmail`, senha de `Seed:AdminPassword`).
