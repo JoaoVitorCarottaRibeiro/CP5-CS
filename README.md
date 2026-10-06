@@ -91,3 +91,42 @@ Entregue:
 - documentação atualizada.
 
 O projeto deve compilar sem erros e ser entregue sem warnings para receber a pontuação integral de Qualidade de Código.
+
+## Configuração do projeto (nosso grupo)
+
+### Provider e pacotes
+
+Banco relacional: **SQLite**, acessado via Entity Framework Core. A escolha não
+pontua; foi adotada por não exigir servidor externo nem credenciais, o que mantém
+o repositório livre de segredos e simplifica a execução por todos os integrantes.
+
+Pacotes principais (projeto `ExpenseHub.Api`):
+
+- `Microsoft.EntityFrameworkCore.Sqlite`
+- `Microsoft.EntityFrameworkCore.Design`
+- `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+
+### Banco de dados
+
+O banco (`expensehub.db`) é criado automaticamente na primeira execução: a
+aplicação aplica as migrations no startup. O arquivo `.db` é ignorado pelo Git.
+
+Para criar ou atualizar o banco manualmente, se preferir:
+
+```shell
+dotnet ef database update --project ./sources/ExpenseHub.Api/ExpenseHub.Api.csproj
+```
+
+A ferramenta `dotnet-ef` pode ser instalada com `dotnet tool install --global dotnet-ef`.
+
+### Como iniciar
+
+```shell
+dotnet restore ./sources/ExpenseHub.slnx
+dotnet build ./sources/ExpenseHub.slnx
+dotnet run --project ./sources/ExpenseHub.Api/ExpenseHub.Api.csproj
+```
+
+Endpoint disponível nesta etapa: `GET /health`, apenas para confirmar que a
+aplicação inicia e persiste o schema. Autenticação, usuários e reembolsos chegam
+nas próximas issues.
