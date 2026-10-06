@@ -21,8 +21,41 @@ internal static class AuthEndpoints
     /// <param name="routes">Construtor de rotas.</param>
     internal static void MapAuthEndpoints(this IEndpointRouteBuilder routes)
     {
+        routes.MapPost("/register", RegisterAsync);
         routes.MapPost("/login", LoginAsync);
         routes.MapGet("/me", MeAsync).RequireAuthorization();
+    }
+
+    private static async Task<IResult> RegisterAsync(
+        RegisterRequest request,
+        UserManager<ApplicationUser> userManager)
+    {
+        if (!RequestValidator.TryValidate(request, out IDictionary<string, string[]> errors))
+        {
+            return Results.ValidationProblem(errors);
+        }
+
+        ApplicationUser? existing = await userManager.FindByEmailAsync(request.Email);
+        if (existing is not null)
+        {
+            return Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "E-mail ja cadastrado.");
+        }
+
+        ApplicationUser user = new()
+        {
+            UserName = request.Email,
+            Email = request.Email,
+        };
+
+        IdentityResult result = await userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            return result.ToValidationProblem();
+        }
+
+        return Results.Created($"/api/admin/users/{user.Id}", new { user.Id, user.Email });
     }
 
     private static async Task<IResult> LoginAsync(

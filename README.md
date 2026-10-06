@@ -150,10 +150,18 @@ dotnet run --project ./sources/ExpenseHub.Api/ExpenseHub.Api.csproj
 Endpoints disponíveis nesta etapa:
 
 - `GET /health` — confirma que a aplicação inicia.
+- `POST /register` — cadastra um usuário (nunca aceita role).
 - `POST /login` — autentica com e-mail e senha e devolve um token bearer (JWT).
-- `GET /me` — rota protegida; devolve o usuário autenticado e suas roles. Sem token
-  retorna `401`.
+- `GET /me` — rota protegida; devolve o usuário autenticado e suas roles.
+- `GET /api/admin/users` — lista usuários; exclusivo de Admin.
+- `PUT /api/admin/users/{id}/roles` — atribui ou remove roles; exclusivo de Admin.
 
-O cadastro de usuários e o gerenciamento de roles chegam no I03; os reembolsos,
-nas issues seguintes. Para autenticar, use a conta Admin criada pelo seed
-(e-mail de `Seed:AdminEmail`, senha de `Seed:AdminPassword`).
+As rotas administrativas exigem um token de um usuário com a role `Admin`. Sem token
+a resposta é `401`; autenticado sem a role necessária é `403`. Apenas roles
+conhecidas são aceitas, e o Admin não pode remover a própria role Admin. Após uma
+alteração de roles, o usuário afetado deve autenticar novamente para que o novo
+token reflita as roles.
+
+Para autenticar como Admin, use a conta criada pelo seed (e-mail de
+`Seed:AdminEmail`, senha de `Seed:AdminPassword`). Os reembolsos chegam nas issues
+seguintes.
