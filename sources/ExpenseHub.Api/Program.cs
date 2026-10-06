@@ -66,7 +66,9 @@ internal static class Program
                 };
             });
 
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorizationBuilder()
+            .AddPolicy(AdminEndpoints.AdminPolicy, policy => policy.RequireRole(Roles.Admin));
+
         builder.Services.AddProblemDetails();
         builder.Services.AddOpenApi();
 
@@ -91,6 +93,7 @@ internal static class Program
             .WithName("GetHealth");
 
         app.MapAuthEndpoints();
+        app.MapAdminEndpoints();
 
         await app.RunAsync();
     }
