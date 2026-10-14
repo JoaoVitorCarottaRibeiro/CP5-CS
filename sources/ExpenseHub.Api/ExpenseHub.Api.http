@@ -1,9 +1,65 @@
 @ExpenseHub_Api_HostAddress = http://localhost:5245
 
+# Cole aqui o accessToken devolvido por POST /login.
+@token = <cole-o-access-token>
+
 GET {{ExpenseHub_Api_HostAddress}}/health
 Accept: application/json
 
 ###
 
 # Os endpoints do checkpoint estão definidos em docs/REQUISITOS.md.
-# Implemente e adicione aqui as requisições usadas para validar cada issue.
+
+### Cadastro (nunca aceita role)
+POST {{ExpenseHub_Api_HostAddress}}/register
+Content-Type: application/json
+
+{
+  "email": "funcionario@empresa.com",
+  "password": "<senha-do-usuario>"
+}
+
+### Login
+POST {{ExpenseHub_Api_HostAddress}}/login
+Content-Type: application/json
+
+{
+  "email": "funcionario@empresa.com",
+  "password": "<senha-do-usuario>"
+}
+
+### Criar rascunho (Employee). Proprietario, estado e horarios vem do servidor.
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "description": "Taxi para reuniao com cliente",
+  "amount": 45.50,
+  "expenseDate": "2026-10-01"
+}
+
+### Editar rascunho proprio (somente em Draft)
+PUT {{ExpenseHub_Api_HostAddress}}/api/expenses/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "description": "Taxi ida e volta para reuniao com cliente",
+  "amount": 60.00,
+  "expenseDate": "2026-10-01"
+}
+
+### Enviar rascunho (Draft -> Submitted)
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses/1/submit
+Authorization: Bearer {{token}}
+
+### Listar reembolsos visiveis ao perfil
+GET {{ExpenseHub_Api_HostAddress}}/api/expenses
+Authorization: Bearer {{token}}
+
+### Consultar detalhe (fora do escopo de leitura retorna 404)
+GET {{ExpenseHub_Api_HostAddress}}/api/expenses/1
+Authorization: Bearer {{token}}
