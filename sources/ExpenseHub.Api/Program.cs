@@ -1,11 +1,13 @@
 using System;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using ExpenseHub.Api.Configuration;
 using ExpenseHub.Api.Data;
 using ExpenseHub.Api.Domain;
 using ExpenseHub.Api.Endpoints;
 using ExpenseHub.Api.Security;
+using ExpenseHub.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -67,7 +69,17 @@ internal static class Program
             });
 
         builder.Services.AddAuthorizationBuilder()
-            .AddPolicy(AdminEndpoints.AdminPolicy, policy => policy.RequireRole(Roles.Admin));
+            .AddPolicy(AdminEndpoints.AdminPolicy, policy => policy.RequireRole(Roles.Admin))
+            .AddPolicy(ExpenseEndpoints.EmployeePolicy, policy => policy.RequireRole(Roles.Employee))
+            .AddPolicy(
+                ExpenseEndpoints.ReaderPolicy,
+                policy => policy.RequireRole(Roles.Employee, Roles.Approver, Roles.Finance, Roles.Auditor));
+
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<ExpenseService>();
+
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
         builder.Services.AddProblemDetails();
         builder.Services.AddOpenApi();
@@ -94,6 +106,7 @@ internal static class Program
 
         app.MapAuthEndpoints();
         app.MapAdminEndpoints();
+        app.MapExpenseEndpoints();
 
         await app.RunAsync();
     }
