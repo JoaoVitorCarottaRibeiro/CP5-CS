@@ -155,6 +155,11 @@ Endpoints disponíveis nesta etapa:
 - `GET /me` — rota protegida; devolve o usuário autenticado e suas roles.
 - `GET /api/admin/users` — lista usuários; exclusivo de Admin.
 - `PUT /api/admin/users/{id}/roles` — atribui ou remove roles; exclusivo de Admin.
+- `POST /api/expenses` — cria um rascunho (`Draft`); exclusivo de Employee.
+- `PUT /api/expenses/{id}` — edita um rascunho próprio, somente em `Draft`.
+- `POST /api/expenses/{id}/submit` — envia um rascunho próprio (`Draft` → `Submitted`).
+- `GET /api/expenses` — lista os reembolsos visíveis ao perfil.
+- `GET /api/expenses/{id}` — consulta o detalhe de um reembolso visível.
 
 As rotas administrativas exigem um token de um usuário com a role `Admin`. Sem token
 a resposta é `401`; autenticado sem a role necessária é `403`. Apenas roles
@@ -163,5 +168,38 @@ alteração de roles, o usuário afetado deve autenticar novamente para que o no
 token reflita as roles.
 
 Para autenticar como Admin, use a conta criada pelo seed (e-mail de
-`Seed:AdminEmail`, senha de `Seed:AdminPassword`). Os reembolsos chegam nas issues
-seguintes.
+`Seed:AdminEmail`, senha de `Seed:AdminPassword`).
+
+### Reembolsos e autorização
+
+O corpo de criação e edição aceita apenas `categoryId`, `description` (10 a 500
+caracteres), `amount` (R$ 0,01 a R$ 2.147.483.647,00) e `expenseDate` (formato
+`aaaa-mm-dd`, não futura). Proprietário, estado, atores e horários são sempre
+definidos pelo servidor; campos extras enviados pelo cliente são ignorados. As
+categorias iniciais (IDs 1 a 4) são criadas pelo seed.
+
+A autorização acontece em duas camadas:
+
+1. **Rota**: `POST`, `PUT` e `submit` exigem a role `Employee`; as consultas exigem
+   `Employee`, `Approver`, `Finance` ou `Auditor`. Sem token: `401`. Sem a role: `403`
+   (inclusive para quem é apenas Admin).
+2. **Serviço** (`Services/ExpensePolicy` + `Services/ExpenseService`): combina role,
+   ownership e estado.
+
+| Perfil | Enxerga (lista e detalhe) |
+|---|---|
+| Employee | os próprios reembolsos |
+| Approver | reembolsos `Submitted` |
+| Finance | reembolsos `Approved` e `Paid` |
+| Auditor | todos |
+
+Com várias roles, o usuário recebe a união. O filtro é aplicado na consulta ao banco,
+antes de materializar os dados. Um reembolso fora do escopo de leitura responde
+`404`; um reembolso visível que não é do usuário responde `403` em edição e envio; e
+uma transição fora do estado esperado (inclusive repetida) responde `409`, sem
+gravar histórico.
+
+Cada alteração grava um registro em `ExpenseHistory` (criação, edição com o resumo
+do que mudou e envio) no mesmo `SaveChanges` da mudança, garantindo atomicidade.
+
+Exemplos de requisições em `sources/ExpenseHub.Api/ExpenseHub.Api.http`.
