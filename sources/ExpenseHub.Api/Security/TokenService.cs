@@ -5,7 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using ExpenseHub.Api.Configuration;
 using ExpenseHub.Api.Domain;
-using ExpenseHub.Api.Dtos;
+using ExpenseHub.Api.Responses;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 

@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 
-namespace ExpenseHub.Api.Dtos;
+namespace ExpenseHub.Api.Responses;
 
-/// <summary>
-/// Representacao de um usuario para as rotas administrativas.
-/// </summary>
-internal sealed class UserDto
+/// <summary>Representacao de um usuario para as rotas administrativas.</summary>
+internal sealed class UserResponse
 {
     /// <summary>Identificador do usuario.</summary>
     public string Id { get; init; } = string.Empty;

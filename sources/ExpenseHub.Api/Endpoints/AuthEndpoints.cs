@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ExpenseHub.Api.Domain;
 using ExpenseHub.Api.Dtos;
+using ExpenseHub.Api.Responses;
 using ExpenseHub.Api.Security;
 using ExpenseHub.Api.Validation;
 using Microsoft.AspNetCore.Builder;

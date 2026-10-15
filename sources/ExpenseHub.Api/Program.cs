@@ -71,6 +71,8 @@ internal static class Program
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy(AdminEndpoints.AdminPolicy, policy => policy.RequireRole(Roles.Admin))
             .AddPolicy(ExpenseEndpoints.EmployeePolicy, policy => policy.RequireRole(Roles.Employee))
+            .AddPolicy(ExpenseEndpoints.ApproverPolicy, policy => policy.RequireRole(Roles.Approver))
+            .AddPolicy(ExpenseEndpoints.FinancePolicy, policy => policy.RequireRole(Roles.Finance))
             .AddPolicy(
                 ExpenseEndpoints.ReaderPolicy,
                 policy => policy.RequireRole(Roles.Employee, Roles.Approver, Roles.Finance, Roles.Auditor));

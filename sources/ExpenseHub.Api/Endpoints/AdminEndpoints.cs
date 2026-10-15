@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ExpenseHub.Api.Domain;
 using ExpenseHub.Api.Dtos;
+using ExpenseHub.Api.Responses;
 using ExpenseHub.Api.Validation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -37,12 +38,12 @@ internal static class AdminEndpoints
     private static async Task<IResult> ListUsersAsync(UserManager<ApplicationUser> userManager)
     {
         List<ApplicationUser> users = await userManager.Users.ToListAsync();
-        List<UserDto> result = new(users.Count);
+        List<UserResponse> result = new(users.Count);
 
         foreach (ApplicationUser user in users)
         {
             IList<string> roles = await userManager.GetRolesAsync(user);
-            result.Add(new UserDto
+            result.Add(new UserResponse
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
@@ -118,7 +119,7 @@ internal static class AdminEndpoints
 
         IList<string> updatedRoles = await userManager.GetRolesAsync(user);
 
-        return Results.Ok(new UserDto
+        return Results.Ok(new UserResponse
         {
             Id = user.Id,
             Email = user.Email ?? string.Empty,

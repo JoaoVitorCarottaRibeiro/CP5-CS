@@ -1,10 +1,8 @@
 using System;
 
-namespace ExpenseHub.Api.Dtos;
+namespace ExpenseHub.Api.Responses;
 
-/// <summary>
-/// Resposta de autenticacao com o token de acesso e sua expiracao.
-/// </summary>
+/// <summary>Resposta de autenticacao com o token de acesso e sua expiracao.</summary>
 internal sealed class AuthResponse
 {
     /// <summary>Token JWT assinado.</summary>
