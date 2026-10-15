@@ -4,6 +4,12 @@ Checkpoint de C# em grupos de até 3 pessoas para construção de uma Applicatio
 
 O prazo de entrega é **13 de outubro de 2026**. O grupo deverá implementar autenticação, autorização, fluxo de aprovação e reprovação, pagamento simulado, histórico e testes unitários.
 
+## Integrantes
+
+- Arthur Bueno de Oliveira — RM558396
+- João Vitor Carotta Ribeiro — RM555187
+- Victor Magdaleno Marcos — RM556729
+
 ## Criar seu repositório
 
 1. Clique em **Use this template**.
@@ -158,8 +164,12 @@ Endpoints disponíveis nesta etapa:
 - `POST /api/expenses` — cria um rascunho (`Draft`); exclusivo de Employee.
 - `PUT /api/expenses/{id}` — edita um rascunho próprio, somente em `Draft`.
 - `POST /api/expenses/{id}/submit` — envia um rascunho próprio (`Draft` → `Submitted`).
+- `POST /api/expenses/{id}/approve` — aprova um enviado (`Submitted` → `Approved`); exclusivo de Approver que não seja o proprietário.
+- `POST /api/expenses/{id}/reject` — reprova um enviado (`Submitted` → `Rejected`) com justificativa; exclusivo de Approver que não seja o proprietário.
+- `POST /api/expenses/{id}/pay` — registra o pagamento (`Approved` → `Paid`); exclusivo de Finance que não seja o proprietário.
 - `GET /api/expenses` — lista os reembolsos visíveis ao perfil.
 - `GET /api/expenses/{id}` — consulta o detalhe de um reembolso visível.
+- `GET /api/expenses/{id}/history` — consulta o histórico com a mesma visibilidade do detalhe.
 
 As rotas administrativas exigem um token de um usuário com a role `Admin`. Sem token
 a resposta é `401`; autenticado sem a role necessária é `403`. Apenas roles
@@ -180,8 +190,9 @@ categorias iniciais (IDs 1 a 4) são criadas pelo seed.
 
 A autorização acontece em duas camadas:
 
-1. **Rota**: `POST`, `PUT` e `submit` exigem a role `Employee`; as consultas exigem
-   `Employee`, `Approver`, `Finance` ou `Auditor`. Sem token: `401`. Sem a role: `403`
+1. **Rota**: criação, edição e envio exigem `Employee`; aprovação e reprovação exigem
+   `Approver`; pagamento exige `Finance`; e as consultas exigem `Employee`,
+   `Approver`, `Finance` ou `Auditor`. Sem token: `401`. Sem a role: `403`
    (inclusive para quem é apenas Admin).
 2. **Serviço** (`Services/ExpensePolicy` + `Services/ExpenseService`): combina role,
    ownership e estado.
@@ -200,6 +211,25 @@ uma transição fora do estado esperado (inclusive repetida) responde `409`, sem
 gravar histórico.
 
 Cada alteração grava um registro em `ExpenseHistory` (criação, edição com o resumo
-do que mudou e envio) no mesmo `SaveChanges` da mudança, garantindo atomicidade.
+do que mudou, envio, aprovação, reprovação ou pagamento) no mesmo `SaveChanges` da
+mudança, garantindo atomicidade. A reprovação exige justificativa de 10 a 500
+caracteres. O pagamento também cria um único `PaymentRecord` com ator, valor e
+horário definidos pelo servidor.
+
+### Testes unitários e qualidade
+
+O projeto `ExpenseHub.UnitTests` cobre a matriz de autorização, ownership,
+transições válidas e repetidas, justificativa, pagamento, histórico e limites das
+validações. Os testes usam o provider EF Core InMemory com uma fonte de horário
+fixa e não dependem de banco, rede ou serviço externo.
+
+Antes de enviar alterações, execute:
+
+```shell
+dotnet build ./sources/ExpenseHub.slnx
+dotnet test ./sources/ExpenseHub.slnx
+dotnet format ./sources/ExpenseHub.slnx --verify-no-changes --severity warn
+pwsh ./scripts/Invoke-CodeQuality.ps1
+```
 
 Exemplos de requisições em `sources/ExpenseHub.Api/ExpenseHub.Api.http`.

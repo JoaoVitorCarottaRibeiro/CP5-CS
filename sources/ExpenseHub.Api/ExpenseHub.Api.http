@@ -1,7 +1,10 @@
 @ExpenseHub_Api_HostAddress = http://localhost:5245
 
-# Cole aqui o accessToken devolvido por POST /login.
-@token = <cole-o-access-token>
+# Cole os accessTokens devolvidos por POST /login para usuarios com cada role.
+@employeeToken = <token-employee>
+@approverToken = <token-approver>
+@financeToken = <token-finance>
+@auditorToken = <token-auditor>
 
 GET {{ExpenseHub_Api_HostAddress}}/health
 Accept: application/json
@@ -30,7 +33,7 @@ Content-Type: application/json
 
 ### Criar rascunho (Employee). Proprietario, estado e horarios vem do servidor.
 POST {{ExpenseHub_Api_HostAddress}}/api/expenses
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 Content-Type: application/json
 
 {
@@ -42,7 +45,7 @@ Content-Type: application/json
 
 ### Editar rascunho proprio (somente em Draft)
 PUT {{ExpenseHub_Api_HostAddress}}/api/expenses/1
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 Content-Type: application/json
 
 {
@@ -54,12 +57,33 @@ Content-Type: application/json
 
 ### Enviar rascunho (Draft -> Submitted)
 POST {{ExpenseHub_Api_HostAddress}}/api/expenses/1/submit
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
+
+### Aprovar reembolso enviado (Approver; nao pode ser o proprietario)
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses/1/approve
+Authorization: Bearer {{approverToken}}
+
+### Reprovar reembolso enviado com justificativa (Approver; nao pode ser o proprietario)
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses/1/reject
+Authorization: Bearer {{approverToken}}
+Content-Type: application/json
+
+{
+  "justification": "Comprovante fiscal esta ilegivel."
+}
+
+### Pagar reembolso aprovado (Finance; nao pode ser o proprietario)
+POST {{ExpenseHub_Api_HostAddress}}/api/expenses/1/pay
+Authorization: Bearer {{financeToken}}
 
 ### Listar reembolsos visiveis ao perfil
 GET {{ExpenseHub_Api_HostAddress}}/api/expenses
-Authorization: Bearer {{token}}
+Authorization: Bearer {{auditorToken}}
 
 ### Consultar detalhe (fora do escopo de leitura retorna 404)
 GET {{ExpenseHub_Api_HostAddress}}/api/expenses/1
-Authorization: Bearer {{token}}
+Authorization: Bearer {{auditorToken}}
+
+### Consultar historico (mesma visibilidade do detalhe)
+GET {{ExpenseHub_Api_HostAddress}}/api/expenses/1/history
+Authorization: Bearer {{auditorToken}}
