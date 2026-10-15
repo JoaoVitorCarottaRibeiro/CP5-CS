@@ -1,11 +1,9 @@
 using System;
 using ExpenseHub.Api.Domain;
 
-namespace ExpenseHub.Api.Dtos;
+namespace ExpenseHub.Api.Responses;
 
-/// <summary>
-/// Representacao de um reembolso devolvida pela API.
-/// </summary>
+/// <summary>Representacao de um reembolso devolvida pela API.</summary>
 internal sealed class ExpenseResponse
 {
     /// <summary>Identificador do reembolso.</summary>

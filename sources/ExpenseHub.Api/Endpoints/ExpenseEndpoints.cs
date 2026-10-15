@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using ExpenseHub.Api.Domain;
 using ExpenseHub.Api.Dtos;
+using ExpenseHub.Api.Responses;
 using ExpenseHub.Api.Services;
 using ExpenseHub.Api.Validation;
 using Microsoft.AspNetCore.Builder;
@@ -26,6 +27,12 @@ internal static class ExpenseEndpoints
     /// <summary>Policy de leitura: Employee, Approver, Finance ou Auditor.</summary>
     internal const string ReaderPolicy = "ExpenseReader";
 
+    /// <summary>Policy das operacoes de aprovacao e reprovacao.</summary>
+    internal const string ApproverPolicy = "ApproverOnly";
+
+    /// <summary>Policy da operacao de pagamento.</summary>
+    internal const string FinancePolicy = "FinanceOnly";
+
     /// <summary>Mapeia as rotas de reembolso.</summary>
     /// <param name="routes">Construtor de rotas.</param>
     internal static void MapExpenseEndpoints(this IEndpointRouteBuilder routes)
@@ -37,6 +44,10 @@ internal static class ExpenseEndpoints
         expenses.MapGet(string.Empty, ListAsync).RequireAuthorization(ReaderPolicy);
         expenses.MapGet("/{id:int}", GetAsync).RequireAuthorization(ReaderPolicy);
         expenses.MapPost("/{id:int}/submit", SubmitAsync).RequireAuthorization(EmployeePolicy);
+        expenses.MapPost("/{id:int}/approve", ApproveAsync).RequireAuthorization(ApproverPolicy);
+        expenses.MapPost("/{id:int}/reject", RejectAsync).RequireAuthorization(ApproverPolicy);
+        expenses.MapPost("/{id:int}/pay", PayAsync).RequireAuthorization(FinancePolicy);
+        expenses.MapGet("/{id:int}/history", GetHistoryAsync).RequireAuthorization(ReaderPolicy);
     }
 
     /// <summary>
@@ -148,6 +159,80 @@ internal static class ExpenseEndpoints
         }
 
         ServiceResult<ExpenseResponse> result = await service.SubmitAsync(caller, id);
+
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> ApproveAsync(
+        int id,
+        ClaimsPrincipal principal,
+        UserManager<ApplicationUser> userManager,
+        ExpenseService service)
+    {
+        ExpenseCaller? caller = ToCaller(principal, userManager);
+        if (caller is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        ServiceResult<ExpenseResponse> result = await service.ApproveAsync(caller, id);
+
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> RejectAsync(
+        int id,
+        RejectExpenseRequest request,
+        ClaimsPrincipal principal,
+        UserManager<ApplicationUser> userManager,
+        ExpenseService service)
+    {
+        ExpenseCaller? caller = ToCaller(principal, userManager);
+        if (caller is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!RequestValidator.TryValidate(request, out IDictionary<string, string[]> errors))
+        {
+            return Results.ValidationProblem(errors);
+        }
+
+        ServiceResult<ExpenseResponse> result = await service.RejectAsync(caller, id, request);
+
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> PayAsync(
+        int id,
+        ClaimsPrincipal principal,
+        UserManager<ApplicationUser> userManager,
+        ExpenseService service)
+    {
+        ExpenseCaller? caller = ToCaller(principal, userManager);
+        if (caller is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        ServiceResult<ExpenseResponse> result = await service.PayAsync(caller, id);
+
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetHistoryAsync(
+        int id,
+        ClaimsPrincipal principal,
+        UserManager<ApplicationUser> userManager,
+        ExpenseService service)
+    {
+        ExpenseCaller? caller = ToCaller(principal, userManager);
+        if (caller is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        ServiceResult<IReadOnlyList<ExpenseHistoryResponse>> result = await service.GetHistoryAsync(caller, id);
 
         return result.ToHttpResult();
     }

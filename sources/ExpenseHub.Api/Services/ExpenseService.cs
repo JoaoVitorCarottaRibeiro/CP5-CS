@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ExpenseHub.Api.Data;
 using ExpenseHub.Api.Domain;
 using ExpenseHub.Api.Dtos;
+using ExpenseHub.Api.Responses;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpenseHub.Api.Services;
@@ -145,6 +146,118 @@ internal sealed class ExpenseService
         return ServiceResult.Success(ExpenseResponse.FromEntity(expense));
     }
 
+    /// <summary>Aprova um reembolso enviado, desde que o aprovador nao seja o proprietario.</summary>
+    /// <param name="caller">Usuario autenticado.</param>
+    /// <param name="id">Identificador do reembolso.</param>
+    /// <returns>Reembolso em Approved.</returns>
+    public async Task<ServiceResult<ExpenseResponse>> ApproveAsync(ExpenseCaller caller, int id)
+    {
+        (Expense? expense, AccessDecision decision) = await FindForAsync(caller, id, ExpenseOperation.Approve);
+        if (expense is null || decision != AccessDecision.Allowed)
+        {
+            return ServiceResult.Denied<ExpenseResponse>(
+                decision,
+                "Somente reembolsos em Submitted podem ser aprovados.");
+        }
+
+        RecordTransition(expense, caller, ExpenseAction.Approved, ExpenseState.Approved, justification: null);
+        await _database.SaveChangesAsync();
+
+        return ServiceResult.Success(ExpenseResponse.FromEntity(expense));
+    }
+
+    /// <summary>Reprova um reembolso enviado e registra a justificativa.</summary>
+    /// <param name="caller">Usuario autenticado.</param>
+    /// <param name="id">Identificador do reembolso.</param>
+    /// <param name="request">Justificativa ja validada.</param>
+    /// <returns>Reembolso em Rejected.</returns>
+    public async Task<ServiceResult<ExpenseResponse>> RejectAsync(
+        ExpenseCaller caller,
+        int id,
+        RejectExpenseRequest request)
+    {
+        (Expense? expense, AccessDecision decision) = await FindForAsync(caller, id, ExpenseOperation.Reject);
+        if (expense is null || decision != AccessDecision.Allowed)
+        {
+            return ServiceResult.Denied<ExpenseResponse>(
+                decision,
+                "Somente reembolsos em Submitted podem ser reprovados.");
+        }
+
+        RecordTransition(
+            expense,
+            caller,
+            ExpenseAction.Rejected,
+            ExpenseState.Rejected,
+            request.Justification);
+        await _database.SaveChangesAsync();
+
+        return ServiceResult.Success(ExpenseResponse.FromEntity(expense));
+    }
+
+    /// <summary>Paga um reembolso aprovado, desde que o usuario Finance nao seja o proprietario.</summary>
+    /// <param name="caller">Usuario autenticado.</param>
+    /// <param name="id">Identificador do reembolso.</param>
+    /// <returns>Reembolso em Paid.</returns>
+    public async Task<ServiceResult<ExpenseResponse>> PayAsync(ExpenseCaller caller, int id)
+    {
+        (Expense? expense, AccessDecision decision) = await FindForAsync(caller, id, ExpenseOperation.Pay);
+        if (expense is null || decision != AccessDecision.Allowed)
+        {
+            return ServiceResult.Denied<ExpenseResponse>(
+                decision,
+                "Somente reembolsos em Approved podem ser pagos.");
+        }
+
+        DateTime now = UtcNow();
+        _database.Payments.Add(new PaymentRecord
+        {
+            ExpenseId = expense.Id,
+            PaidById = caller.UserId,
+            PaidAtUtc = now,
+            Amount = expense.Amount,
+        });
+
+        RecordTransition(expense, caller, ExpenseAction.Paid, ExpenseState.Paid, justification: null, now);
+        await _database.SaveChangesAsync();
+
+        return ServiceResult.Success(ExpenseResponse.FromEntity(expense));
+    }
+
+    /// <summary>Consulta o historico de um reembolso visivel ao chamador.</summary>
+    /// <param name="caller">Usuario autenticado.</param>
+    /// <param name="id">Identificador do reembolso.</param>
+    /// <returns>Historico em ordem cronologica.</returns>
+    public async Task<ServiceResult<IReadOnlyList<ExpenseHistoryResponse>>> GetHistoryAsync(
+        ExpenseCaller caller,
+        int id)
+    {
+        (Expense? expense, AccessDecision decision) = await FindForAsync(caller, id, ExpenseOperation.Read);
+        if (expense is null || decision != AccessDecision.Allowed)
+        {
+            return ServiceResult.Denied<IReadOnlyList<ExpenseHistoryResponse>>(decision, string.Empty);
+        }
+
+        List<ExpenseHistoryResponse> history = await _database.ExpenseHistory
+            .AsNoTracking()
+            .Where(item => item.ExpenseId == id)
+            .OrderBy(item => item.OccurredAtUtc)
+            .ThenBy(item => item.Id)
+            .Select(item => new ExpenseHistoryResponse
+            {
+                Action = item.Action,
+                ActorId = item.ActorId,
+                OccurredAtUtc = item.OccurredAtUtc,
+                PreviousState = item.PreviousState,
+                NextState = item.NextState,
+                Justification = item.Justification,
+                Changes = item.Changes,
+            })
+            .ToListAsync();
+
+        return ServiceResult.Success<IReadOnlyList<ExpenseHistoryResponse>>(history);
+    }
+
     /// <summary>Lista os reembolsos visiveis ao chamador, filtrando no banco.</summary>
     /// <param name="caller">Usuario autenticado.</param>
     /// <returns>Reembolsos visiveis, do mais recente para o mais antigo.</returns>
@@ -219,9 +332,10 @@ internal sealed class ExpenseService
         ExpenseCaller caller,
         ExpenseAction action,
         ExpenseState nextState,
-        string? justification)
+        string? justification,
+        DateTime? occurredAtUtc = null)
     {
-        DateTime now = UtcNow();
+        DateTime now = occurredAtUtc ?? UtcNow();
 
         expense.History.Add(new ExpenseHistory
         {
